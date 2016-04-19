@@ -1,6 +1,5 @@
 var session = require('../../../lib/session');
 var url = require('url');
-var User = keystone.list(keystone.get('user model'));
 
 exports = module.exports = function(req, res) {
 
@@ -10,8 +9,7 @@ exports = module.exports = function(req, res) {
 		keystone.render(req, res, 'signin', {
 			submitted: req.body,
 			from: req.query.from,
-			logo: keystone.get('signin logo'),
-			sendResetLink: (User.schema.methods.sendResetPassword) ? keystone.get('resetpassword url') : false
+			logo: keystone.get('signin logo')
 		});
 	}
 
@@ -28,7 +26,7 @@ exports = module.exports = function(req, res) {
 			return renderView();
 		}
 
-		var onSuccess = function(user) {
+		var onSuccess = function (user) {
 
 			if (req.query.from && req.query.from.match(/^(?!http|\/\/|javascript).+/)) {
 				var parsed = url.parse(req.query.from);
@@ -47,12 +45,13 @@ exports = module.exports = function(req, res) {
 
 		};
 
-		var onFail = function () {
-			req.flash('error', 'Sorry, that email and password combo are not valid.');
+		var onFail = function (err) {
+			var message = (err && err.message) ? err.message : 'Sorry, that email and password combo are not valid.';
+			req.flash('error', message );
 			renderView();
 		};
 
-		keystone.session.signin(req.body, req, res, onSuccess, onFail);
+		session.signin(req.body, req, res, onSuccess, onFail);
 
 	} else {
 		renderView();
