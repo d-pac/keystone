@@ -104,7 +104,7 @@ datetime.prototype.updateItem = function(item, data) {
 	var newValue = m(this.getInputFromData(data), this.formatString);
 	if (newValue.isValid()) {
 		if (!item.get(this.path) || !newValue.isSame(item.get(this.path))) {
-			item.set(this.path, newValue.toDate());
+			item.set(this.path, newValue.toISOString());
 		}
 	} else if (item.get(this.path)) {
 		item.set(this.path, null);
