@@ -25,7 +25,7 @@ module.exports = Field.create({
 
 	moment: function(value) {
 		var m = moment(value);
-		if (this.props.isUTC) m.utc();
+		if (this.props.isUTC) m.utc(value);
 		return m;
 	},
 
