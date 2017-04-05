@@ -9,11 +9,22 @@ module.exports = Field.create({
 	displayName: 'DatetimeField',
 
 	focusTargetRef: 'dateInput',
+	tzOffsetInputFormat: 'Z',
+	parseFormats: ['YYYY-MM-DD', 'YYYY-MM-DD h:m:s a', 'YYYY-MM-DD h:m a', 'YYYY-MM-DD H:m:s', 'YYYY-MM-DD H:m'],
 
 	getInitialState: function() {
+		if(this.props.value){
+			var t = moment.utc(this.props.value).local();
+			return {
+				dateValue: t.format(this.props.dateFormat),
+				timeValue: t.format(this.props.timeFormat),
+				tzOffsetValue: t.format(this.tzOffsetInputFormat),
+			}
+		}
 		return {
-			dateValue: this.props.value ? this.moment(this.props.value).format(this.props.dateFormat) : '',
-			timeValue: this.props.value ? this.moment(this.props.value).format(this.props.timeFormat) : ''
+			dateValue: '',
+			timeValue: '',
+			tzOffsetValue: moment().format(this.tzOffsetInputFormat),
 		};
 	},
 
@@ -23,26 +34,19 @@ module.exports = Field.create({
 		};
 	},
 
-	moment: function(value) {
-		var m = moment(value);
-		if (this.props.isUTC) m.utc(value);
-		return m;
-	},
-
 	// TODO: Move isValid() so we can share with server-side code
 	isValid: function(value) {
-		return moment(value, this.props.formatString).isValid();
+		return moment(value, this.parseFormats).isValid();
 	},
 
-	// TODO: Move format() so we can share with server-side code
 	format: function(value, format) {
 		format = format || this.props.dateFormat + ' ' + this.props.timeFormat;
-		return value ? this.moment(value).format(format) : '';
+		return value ? moment(value).format(format) : '';
 	},
 
-	handleChange: function(dateValue, timeValue) {
-		var value = dateValue + ' ' + timeValue;
-		var datetimeFormat = this.props.dateFormat + ' ' + this.props.timeFormat;
+	handleChange: function(dateValue, timeValue, tzOffsetValue) {
+		var value = dateValue + ' ' + timeValue + ' ' + tzOffsetValue;
+		var datetimeFormat = this.props.dateFormat + ' ' + this.props.timeFormat + ' ' + this.tzOffsetInputFormat;
 		this.props.onChange({
 			path: this.props.path,
 			value: this.isValid(value) ? moment(value, datetimeFormat).toISOString() : null
@@ -51,22 +55,24 @@ module.exports = Field.create({
 
 	dateChanged: function(value) {
 		this.setState({ dateValue: value });
-		this.handleChange(value, this.state.timeValue);
+		this.handleChange(value, this.state.timeValue, this.state.tzOffsetValue);
 	},
 
 	timeChanged: function(event) {
 		this.setState({ timeValue: event.target.value });
-		this.handleChange(this.state.dateValue, event.target.value);
+		this.handleChange(this.state.dateValue, event.target.value, this.state.tzOffsetValue);
 	},
 
 	setNow: function() {
 		var dateValue = moment().format(this.props.dateFormat);
 		var timeValue = moment().format(this.props.timeFormat);
+		var tzOffsetValue = moment().format( this.tzOffsetInputFormat );
 		this.setState({
 			dateValue: dateValue,
-			timeValue: timeValue
+			timeValue: timeValue,
+			tzOffsetValue: tzOffsetValue
 		});
-		this.handleChange(dateValue, timeValue);
+		this.handleChange(dateValue, timeValue, tzOffsetValue);
 	},
 
 	renderUI: function() {
@@ -77,6 +83,7 @@ module.exports = Field.create({
 				<div className={fieldClassName}>
 					<DateInput ref="dateInput" name={this.props.paths.date} value={this.state.dateValue} placeholder={this.props.datePlaceholder} format={this.props.dateFormat} onChange={this.dateChanged} />
 					<input type="text" name={this.props.paths.time} value={this.state.timeValue} placeholder={this.props.timePlaceholder} onChange={this.timeChanged} autoComplete="off" className="form-control time" />
+					<input type="hidden" name={this.props.paths.tzOffset} value={this.state.tzOffsetValue}/>
 					<button type="button" className="btn btn-default btn-set-now" onClick={this.setNow}>Now</button>
 				</div>
 			);
