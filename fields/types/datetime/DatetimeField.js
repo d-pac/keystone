@@ -10,7 +10,6 @@ module.exports = Field.create({
 
 	focusTargetRef: 'dateInput',
 	tzOffsetInputFormat: 'Z',
-	parseFormats: ['YYYY-MM-DD', 'YYYY-MM-DD h:m:s a', 'YYYY-MM-DD h:m a', 'YYYY-MM-DD H:m:s', 'YYYY-MM-DD H:m'],
 
 	getInitialState: function() {
 		if(this.props.value){
@@ -30,7 +29,7 @@ module.exports = Field.create({
 
 	getDefaultProps: function() {
 		return {
-			formatString: 'YYYY-MM-DD, h:mm a'
+			formatString: 'YYYY-MM-DD h:mm a'
 		};
 	},
 
@@ -41,7 +40,7 @@ module.exports = Field.create({
 
 	format: function(value, format) {
 		format = format || this.props.dateFormat + ' ' + this.props.timeFormat;
-		return value ? moment(value).format(format) : '';
+		return value ? moment.utc(value).local().format(format) : '';
 	},
 
 	handleChange: function(dateValue, timeValue, tzOffsetValue) {

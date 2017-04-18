@@ -4,9 +4,6 @@ var FieldType = require('../Type');
 var util = require('util');
 var _ = require('underscore');
 
-// ISO_8601 is needed for the automatically created createdAt and updatedAt fields
-var parseFormats = ['YYYY-MM-DD', 'YYYY-MM-DD h:m:s a', 'YYYY-MM-DD h:m a', 'YYYY-MM-DD H:m:s', 'YYYY-MM-DD H:m', 'YYYY-MM-DD h:mm:s a Z', moment.ISO_8601];
-
 /**
  * DateTime FieldType Constructor
  * @extends Field
@@ -16,43 +13,13 @@ function datetime(list, path, options) {
 	this._nativeType = Date;
 	this._underscoreMethods = ['format', 'moment', 'parse'];
 	this._fixedSize = 'large';
-	this._properties = ['formatString', 'dateFormat', 'timeFormat', 'datePlaceholder', 'timePlaceholder', 'isUTC'];
+	this._properties = ['formatString', 'dateFormat', 'timeFormat'];
 	this.typeDescription = 'date and time';
-	this.parseFormatString = options.parseFormat || parseFormats;
-	this.formatString = (options.format === false) ? false : (options.format || 'YYYY-MM-DD h:mm:ss a');
-	this.tzFormatString = 'Z';
 
-	// Create an array of moment time format characters to help find where the time portion of the format string beings
-	var timeOptions = ['h', 'H', 'm', 's', 'S'];
-	var timeIndex = -1;
+	this.dateFormat = options.dateFormat || 'YYYY-MM-DD';
+	this.timeFormat = options.timeFormat || 'h:mm a';
+	this.formatString = (options.format === false) ? false : (options.format || this.dateFormat + ' ' + this.timeFormat);
 
-	var that = this;
-
-	if(this.formatString) {
-		// Loop through each moment time format character to determine which begins the time portion of format to segregate date from time
-		_.each(timeOptions, function(timeChar) {
-			var charIndex = that.formatString.indexOf(timeChar);
-
-			if((charIndex !== -1 && charIndex < timeIndex) || (charIndex !== -1 && timeIndex === -1)) {
-				timeIndex = charIndex;
-			}
-		});
-
-		this.dateFormat = this.formatString.slice(0, timeIndex).trim();
-		this.timeFormat = this.formatString.slice(timeIndex).trim();
-		this.datePlaceholder = 'e.g. ' + moment().format(this.dateFormat);
-		this.timePlaceholder = 'e.g. ' + moment().format(this.timeFormat);
-
-	} else {
-		this.dateFormat = '';
-		this.timeFormat = '';
-		this.datePlaceholder = '';
-		this.timePlaceholder = '';
-	}
-
-	if (this.formatString && 'string' !== typeof this.formatString) {
-		throw new Error('FieldType.DateTime: options.format must be a string.');
-	}
 	datetime.super_.call(this, list, path, options);
 	this.paths = {
 		date: this._path.append('_date'),
@@ -75,11 +42,18 @@ datetime.prototype.getInputFromData = function(data) {
 	var dateValue = data[this.paths.date];
 	var timeValue = data[this.paths.time];
 	var tzOffsetValue = data[this.paths.tzOffset];
-	if (dateValue && timeValue) {
-		return dateValue.trim() + ' ' + timeValue.trim() + ' ' + tzOffsetValue;
+	
+	if(!!dateValue){
+		if(timeValue){
+			return moment.utc(dateValue + ' ' + timeValue + ' ' + tzOffsetValue, this.dateFormat + ' ' + this.timeFormat + ' Z');
+		}
+		return moment(dateValue, this.dateFormat).utc();
+
+	}else if (data[this.path]){
+		return moment.utc(this.get(this.path), this.formatString);
 	}
 
-	return data[this.path];
+	return null;
 };
 
 /**
@@ -87,10 +61,11 @@ datetime.prototype.getInputFromData = function(data) {
  * An empty value clears the stored value and is considered valid
  */
 datetime.prototype.validateInput = function(data, required, item) {
-	var value = this.getInputFromData(data);
 	
-	if(!!value){
-		return moment(value, parseFormats).isValid();
+	var mValue = this.getInputFromData(data);
+	
+	if(!!mValue){
+		return mValue.isValid();
 	}else if(required){
 		return false;
 	}
@@ -103,10 +78,10 @@ datetime.prototype.validateInput = function(data, required, item) {
  * Updates the value for this field in the item from a data object
  */
 datetime.prototype.updateItem = function(item, data) {
-	var value = this.getInputFromData(data);
+	var mValue = this.getInputFromData(data);
+	
 	var oldValue = item.get(this.path);
-	if(value){
-		var mValue = moment(value, this.formatString + ' ' + this.tzFormatString).utc();
+	if(mValue){
 		if(!mValue.isSame(oldValue)){
 			item.set(this.path, mValue.toDate());
 		}
