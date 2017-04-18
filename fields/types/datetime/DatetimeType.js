@@ -47,7 +47,7 @@ datetime.prototype.getInputFromData = function(data) {
 		if(timeValue){
 			return moment.utc(dateValue + ' ' + timeValue + ' ' + tzOffsetValue, this.dateFormat + ' ' + this.timeFormat + ' Z');
 		}
-		return moment(dateValue, this.dateFormat).utc();
+		return moment.utc(dateValue + ' ' + tzOffsetValue, this.dateFormat + ' Z');
 
 	}else if (data[this.path]){
 		return moment.utc(this.get(this.path), this.formatString);
